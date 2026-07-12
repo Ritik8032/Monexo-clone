@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "siteKey": "1x00000000000000000000AA",
+    "okTurnstileSitekey": "1x00000000000000000000AA",
+    "appDownloadUrl": "https://down.monexo.top/down/monexo.apk",
+    "appVersion": "1.0.0",
+    "rsKeyMode": 1,
+    "simpleSmsCaptcha": 0,
+    "sliderSmsCaptcha": 0,
+    "antResetPassFlag": 0,
+    "webLicenseId": "19711455",
+    "tgChannelLink": "xxxx",
+    "whatsappLink": "xxxx",
+    "pinFlag": 0,
+    "platformName": "Monexo"
+  }
+}
