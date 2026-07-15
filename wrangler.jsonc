@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "my-app-clone",
+  "name": "my-app-clone-monexo",
   "compatibility_date": "2026-06-03",
   "observability": {
     "enabled": true
