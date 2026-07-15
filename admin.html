@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - TezFlow</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body id="admin-app-body" class="h-full text-slate-800">
+  <div id="app" class="min-h-full flex flex-col" v-cloak>
+    
+    <!-- 1. LOGIN SCREEN -->
+    <div v-if="!isLoggedIn" id="login-screen" class="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-900">
+      <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="flex justify-center">
+          <div class="h-16 w-16 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <i class="fa-solid fa-user-shield text-3xl text-white"></i>
+          </div>
+        </div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-white tracking-tight">TezFlow Control Panel</h2>
+        <p class="mt-2 text-center text-sm text-slate-400">
+          Enter admin credentials to access database logs and settings
+        </p>
+      </div>
+
+      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-slate-800 py-8 px-4 shadow-xl rounded-2xl sm:px-10 border border-slate-700/50">
+          <form @submit.prevent="handleLogin" class="space-y-6">
+            <div>
+              <label for="phone" class="block text-sm font-medium text-slate-300">Admin Username / Phone</label>
+              <div class="mt-1 relative rounded-md shadow-sm">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i class="fa-solid fa-phone text-slate-500"></i>
+                </div>
+                <input id="phone" type="text" v-model="loginForm.phone" required 
+                  class="block w-full pl-10 pr-3 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                  placeholder="7870873927">
+              </div>
+            </div>
+
+            <div>
+              <label for="password" class="block text-sm font-medium text-slate-300">Password</label>
+              <div class="mt-1 relative rounded-md shadow-sm">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i class="fa-solid fa-lock text-slate-500"></i>
+                </div>
+                <input id="password" type="password" v-model="loginForm.password" required 
+                  class="block w-full pl-10 pr-3 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                  placeholder="••••••••">
+              </div>
+            </div>
+
+            <div v-if="errorMsg" class="p-3 bg-red-900/40 border border-red-500/50 text-red-200 text-sm rounded-xl">
+              <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ errorMsg }}
+            </div>
+
+            <div>
+              <button id="login-submit-btn" type="submit" :disabled="loading"
+                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition duration-150 disabled:opacity-50">
+                <span v-if="loading"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i> Authenticating...</span>
+                <span v-else>Access Dashboard</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION WORKSPACE -->
+    <div v-else id="admin-workspace" class="flex-1 flex flex-col md:flex-row min-h-screen">
+      
+      <!-- Side Navigation Rail -->
+      <aside id="side-nav-rail" class="w-full md:w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
+        <!-- Logo Header -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+          <div class="h-9 w-9 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-cyan-500/20 mr-3">
+            <i class="fa-solid fa-user-shield text-sm text-white"></i>
+          </div>
+          <span class="text-lg font-bold text-white tracking-wider">TezFlow <span class="text-xs text-cyan-400 uppercase font-mono tracking-tight bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-800">Admin</span></span>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex-1 px-4 py-6 space-y-2">
+          <button id="tab-btn-dashboard" @click="activeTab = 'dashboard'" 
+            :class="['w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition duration-150', activeTab === 'dashboard' ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
+            <i class="fa-solid fa-chart-pie mr-3 text-lg"></i>
+            Dashboard Stats
+          </button>
+          
+          <button id="tab-btn-users" @click="activeTab = 'users'" 
+            :class="['w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition duration-150', activeTab === 'users' ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border border-cyan-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
+            <i class="fa-solid fa-users mr-3 text-lg"></i>
+            Manage Users
+          </button>
+        </nav>
+
+        <!-- Current Session User -->
+        <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
+              AD
+            </div>
+            <div class="ml-3">
+              <p class="text-xs font-semibold text-slate-300">Ritik Admin</p>
+              <p class="text-[10px] text-slate-500">7870873927</p>
+            </div>
+          </div>
+          <button id="logout-btn" @click="handleLogout" class="p-2 text-slate-400 hover:text-red-400 transition" title="Logout">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Content Area -->
+      <main id="main-content-pane" class="flex-1 bg-slate-50 overflow-y-auto px-4 py-8 md:px-8">
+        
+        <!-- Header -->
+        <header class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">
+              {{ activeTab === 'dashboard' ? 'Dashboard Overview' : 'Users Administration' }}
+            </h1>
+            <p class="text-sm text-slate-500">
+              {{ activeTab === 'dashboard' ? 'Real-time database volume, total transactions, and status statistics.' : 'Find, view details, and manage user balances instantly.' }}
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="refreshData" class="flex items-center px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 transition shadow-sm">
+              <i :class="['fa-solid fa-arrows-rotate mr-2', fetching ? 'animate-spin' : '']"></i> Refresh
+            </button>
+          </div>
+        </header>
+
+        <!-- 2A. DASHBOARD TAB -->
+        <div v-if="activeTab === 'dashboard'" id="dashboard-tab" class="space-y-8">
+          
+          <!-- Metrics Grid -->
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            
+            <!-- Card 1: Total Users -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-6 flex items-center hover:shadow-md transition duration-200">
+              <div class="p-3 rounded-xl bg-blue-50 text-blue-600 mr-4">
+                <i class="fa-solid fa-users text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Users</p>
+                <h3 class="text-3xl font-bold text-slate-900 mt-1">{{ stats.totalUsers }}</h3>
+              </div>
+            </div>
+
+            <!-- Card 2: Total Balance -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-6 flex items-center hover:shadow-md transition duration-200">
+              <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 mr-4">
+                <i class="fa-solid fa-wallet text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Balances</p>
+                <h3 class="text-3xl font-bold text-slate-900 mt-1">₹{{ formatCurrency(stats.totalBalance) }}</h3>
+              </div>
+            </div>
+
+            <!-- Card 3: Total Recharge -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-6 flex items-center hover:shadow-md transition duration-200">
+              <div class="p-3 rounded-xl bg-amber-50 text-amber-600 mr-4">
+                <i class="fa-solid fa-arrow-up-right-from-square text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Recharge</p>
+                <h3 class="text-3xl font-bold text-slate-900 mt-1">₹{{ formatCurrency(stats.totalRecharge) }}</h3>
+              </div>
+            </div>
+
+            <!-- Card 4: KYC Verified -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-slate-100 p-6 flex items-center hover:shadow-md transition duration-200">
+              <div class="p-3 rounded-xl bg-cyan-50 text-cyan-600 mr-4">
+                <i class="fa-solid fa-id-card text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">KYC Verified</p>
+                <h3 class="text-3xl font-bold text-slate-900 mt-1">{{ stats.kycVerified }}</h3>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Secondary Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Quick Actions Panel -->
+            <div class="bg-white shadow-sm rounded-2xl border border-slate-100 p-6">
+              <h2 class="text-lg font-bold text-slate-900 mb-4">Quick Control Shortcuts</h2>
+              <div class="space-y-3">
+                <button @click="activeTab = 'users'" class="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition text-left">
+                  <div class="flex items-center">
+                    <div class="p-2 rounded-lg bg-cyan-100 text-cyan-700 mr-3">
+                      <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-slate-800">Search User Details</h4>
+                      <p class="text-xs text-slate-500">Query users by UID or Phone</p>
+                    </div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-slate-400 text-sm"></i>
+                </button>
+                <button @click="openBalanceShortCut" class="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition text-left">
+                  <div class="flex items-center">
+                    <div class="p-2 rounded-lg bg-emerald-100 text-emerald-700 mr-3">
+                      <i class="fa-solid fa-circle-plus"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-slate-800">Quick Fund Deposit</h4>
+                      <p class="text-xs text-slate-500">Deposit, deduct or adjust balances</p>
+                    </div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-slate-400 text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Daily Statistics -->
+            <div class="lg:col-span-2 bg-white shadow-sm rounded-2xl border border-slate-100 p-6">
+              <h2 class="text-lg font-bold text-slate-900 mb-4">Registration Activities</h2>
+              <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div class="flex items-center">
+                  <div class="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mr-4">
+                    <i class="fa-solid fa-calendar-day"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-md font-semibold text-slate-800">Registered Today</h3>
+                    <p class="text-xs text-slate-500">Number of new registrations created today</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-3xl font-extrabold text-indigo-600">{{ stats.todayRegistrations }}</span>
+                  <span class="block text-[10px] text-slate-400 font-mono uppercase font-semibold">Today</span>
+                </div>
+              </div>
+              <p class="mt-6 text-xs text-slate-400 leading-relaxed">
+                <i class="fa-solid fa-circle-info mr-1.5 text-slate-500"></i> All statistical indicators are computed directly from the live database cluster. Use the <strong>Refresh</strong> button at the top to fetch updated indicators.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- 2B. USERS TAB -->
+        <div v-else-if="activeTab === 'users'" id="users-tab" class="space-y-6">
+          
+          <!-- Search & Operations Bar -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="w-full md:max-w-md relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+              </div>
+              <input type="text" v-model="searchQuery" @keyup.enter="fetchUsers"
+                class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm shadow-inner" 
+                placeholder="Find users by UID or Mobile number...">
+            </div>
+            <div class="flex gap-2 w-full md:w-auto">
+              <button @click="fetchUsers" class="flex-1 md:flex-initial px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold transition shadow-sm">
+                Search
+              </button>
+              <button @click="searchQuery = ''; fetchUsers();" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition">
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Users Table Container -->
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">UID</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Number</th>
+                    <th scope="col" class="px-6 py-4 class-left text-xs font-bold text-slate-400 uppercase tracking-wider">Real Name</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Current Balance</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Recharge</th>
+                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">KYC Status</th>
+                    <th scope="col" class="relative px-6 py-4">
+                      <span class="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  <tr v-if="users.length === 0">
+                    <td colspan="7" class="px-6 py-10 text-center text-slate-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <i class="fa-solid fa-users-slash text-4xl text-slate-300 mb-3"></i>
+                        <span class="text-sm font-medium">No users found in database</span>
+                        <span class="text-xs text-slate-400 mt-1">Try clearing search filters or add new test users.</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-for="user in users" :key="user._id" class="hover:bg-slate-50/50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">
+                      {{ user._id }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
+                      {{ user.phone }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                      {{ user.realName || '—' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-slate-900">
+                      ₹{{ formatCurrency(user.balance) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      ₹{{ formatCurrency(user.recharge) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                      <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', user.kycStatus === 1 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200']">
+                        {{ user.kycStatus === 1 ? 'Verified' : 'Pending' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div class="flex items-center justify-end gap-2">
+                        <button @click="showUserDrawer(user)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition text-xs font-bold">
+                          View details
+                        </button>
+                        <button @click="openQuickBalance(user)" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition text-xs font-bold">
+                          Adjust Balance
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- 3. SLIDE-OVER DRAWER (USER DETAILS VIEW) -->
+    <div v-if="drawerOpen && selectedUser" id="user-details-drawer" class="fixed inset-0 overflow-hidden z-50">
+      <div class="absolute inset-0 overflow-hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" @click="drawerOpen = false"></div>
+        
+        <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+          <div class="w-screen max-w-md">
+            <div class="h-full flex flex-col bg-white shadow-2xl overflow-y-scroll">
+              
+              <!-- Drawer Header -->
+              <div class="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-bold">User Details Profile</h2>
+                  <p class="text-xs text-slate-400 mono-font">UID: {{ selectedUser._id }}</p>
+                </div>
+                <button @click="drawerOpen = false" class="text-slate-400 hover:text-white transition">
+                  <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+              </div>
+
+              <!-- Drawer Body -->
+              <div class="flex-1 p-6 space-y-8">
+                
+                <!-- Section 1: Profile Summary -->
+                <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div class="h-12 w-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold">
+                    {{ selectedUser.phone.slice(-2) }}
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-md">{{ selectedUser.phone }}</h3>
+                    <p class="text-xs text-slate-500">Real Name: {{ selectedUser.realName || '—' }}</p>
+                  </div>
+                </div>
+
+                <!-- Section 2: Account Balances -->
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Balance & Limits</h4>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase">Wallet Balance</p>
+                      <p class="text-lg font-extrabold text-slate-900 mt-1">₹{{ formatCurrency(selectedUser.balance) }}</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase">Total Recharge</p>
+                      <p class="text-lg font-extrabold text-slate-900 mt-1">₹{{ formatCurrency(selectedUser.recharge) }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section 3: Telemetry & Connection Metadata -->
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Connection Telemetry</h4>
+                  <div class="bg-white rounded-xl border border-slate-100 divide-y divide-slate-100 text-sm overflow-hidden">
+                    <div class="flex justify-between p-3.5">
+                      <span class="text-slate-500 font-medium">IP Address</span>
+                      <span class="font-semibold text-slate-900 font-mono text-xs">{{ selectedUser.ip || 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between p-3.5">
+                      <span class="text-slate-500 font-medium">Device Type</span>
+                      <span class="font-semibold text-slate-800 text-xs text-right max-w-[200px] truncate" :title="selectedUser.deviceType">
+                        {{ parseUserAgent(selectedUser.deviceType) }}
+                      </span>
+                    </div>
+                    <div class="flex justify-between p-3.5">
+                      <span class="text-slate-500 font-medium">Network Link</span>
+                      <span class="font-semibold text-slate-900 text-xs">{{ selectedUser.net || 'WiFi/Cellular' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section 4: Linked UPI Accounts -->
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Linked UPI Accounts</h4>
+                  <div v-if="selectedUser.upiDetails && selectedUser.upiDetails.length > 0" class="space-y-2">
+                    <div v-for="(upi, index) in selectedUser.upiDetails" :key="index" class="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <div class="flex items-center">
+                        <i class="fa-solid fa-link text-slate-400 mr-3"></i>
+                        <div>
+                          <p class="text-sm font-semibold text-slate-800">{{ upi.upiId || upi.upi || upi }}</p>
+                          <p class="text-[10px] text-slate-400">Account #{{ index + 1 }}</p>
+                        </div>
+                      </div>
+                      <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold border border-emerald-100">Linked</span>
+                    </div>
+                  </div>
+                  <div v-else class="p-4 border border-dashed border-slate-200 rounded-xl text-center text-slate-400 text-sm">
+                    No UPI details linked yet
+                  </div>
+                </div>
+
+                <!-- Section 5: Direct Balance Adjustment Inside Drawer -->
+                <div class="p-4 bg-slate-900 text-white rounded-2xl space-y-4">
+                  <h4 class="text-sm font-bold">Adjust Funds Direct</h4>
+                  <form @submit.prevent="updateBalance(selectedUser)" class="space-y-3">
+                    <div>
+                      <label class="block text-xs font-medium text-slate-300">Operation Type</label>
+                      <div class="grid grid-cols-3 gap-2 mt-1">
+                        <button type="button" @click="adjForm.type = 'add'" :class="['py-1.5 rounded-lg text-xs font-bold text-center border transition', adjForm.type === 'add' ? 'bg-emerald-600 text-white border-transparent' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700']">
+                          Add
+                        </button>
+                        <button type="button" @click="adjForm.type = 'subtract'" :class="['py-1.5 rounded-lg text-xs font-bold text-center border transition', adjForm.type === 'subtract' ? 'bg-red-600 text-white border-transparent' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700']">
+                          Deduct
+                        </button>
+                        <button type="button" @click="adjForm.type = 'set'" :class="['py-1.5 rounded-lg text-xs font-bold text-center border transition', adjForm.type === 'set' ? 'bg-cyan-600 text-white border-transparent' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700']">
+                          Set Direct
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-medium text-slate-300">Amount (₹)</label>
+                      <input type="number" step="0.01" v-model.number="adjForm.amount" required
+                        class="mt-1 block w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                        placeholder="e.g. 500">
+                    </div>
+
+                    <button type="submit" :disabled="adjLoading"
+                      class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-xl text-xs font-bold tracking-wider uppercase shadow transition disabled:opacity-50">
+                      <span v-if="adjLoading"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Saving...</span>
+                      <span v-else>Apply Balance Update</span>
+                    </button>
+                  </form>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. QUICK BALANCE MODAL -->
+    <div v-if="modalOpen && selectedUser" id="balance-modal" class="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="modalOpen = false"></div>
+      
+      <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 z-10">
+        <div class="px-6 py-4 bg-slate-950 text-white flex items-center justify-between">
+          <h3 class="font-bold">Adjust Wallet Balance</h3>
+          <button @click="modalOpen = false" class="text-slate-400 hover:text-white transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+            <span class="block text-[10px] text-slate-500 font-bold uppercase">Target Phone</span>
+            <span class="text-md font-bold text-slate-900">{{ selectedUser.phone }}</span>
+            <span class="block text-xs text-slate-400 mt-1">Current Wallet Balance: <strong>₹{{ formatCurrency(selectedUser.balance) }}</strong></span>
+          </div>
+
+          <form @submit.prevent="updateBalance(selectedUser)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Adjustment Type</label>
+              <div class="grid grid-cols-3 gap-2 mt-1.5">
+                <button type="button" @click="adjForm.type = 'add'" :class="['py-2 rounded-xl text-xs font-bold text-center border transition', adjForm.type === 'add' ? 'bg-emerald-600 text-white border-transparent' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100']">
+                  Add Funds
+                </button>
+                <button type="button" @click="adjForm.type = 'subtract'" :class="['py-2 rounded-xl text-xs font-bold text-center border transition', adjForm.type === 'subtract' ? 'bg-red-600 text-white border-transparent' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100']">
+                  Deduct Funds
+                </button>
+                <button type="button" @click="adjForm.type = 'set'" :class="['py-2 rounded-xl text-xs font-bold text-center border transition', adjForm.type === 'set' ? 'bg-cyan-600 text-white border-transparent' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100']">
+                  Set Absolute
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount (₹)</label>
+              <input type="number" step="0.01" v-model.number="adjForm.amount" required
+                class="mt-1.5 block w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="Enter deposit/deduction amount...">
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <button type="button" @click="modalOpen = false" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                Cancel
+              </button>
+              <button type="submit" :disabled="adjLoading"
+                class="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition disabled:opacity-50">
+                <span v-if="adjLoading"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Applying...</span>
+                <span v-else>Apply Adjust</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Vue.js 3 Production CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- Frontend Logic Script -->
+  <script>
+    const { createApp, ref, onMounted, reactive } = Vue;
+
+    createApp({
+      setup() {
+        const isLoggedIn = ref(false);
+        const activeTab = ref('dashboard');
+        const loading = ref(false);
+        const fetching = ref(false);
+        const errorMsg = ref('');
+
+        const loginForm = reactive({
+          phone: '',
+          password: ''
+        });
+
+        const stats = reactive({
+          totalUsers: 0,
+          totalBalance: 0,
+          totalRecharge: 0,
+          kycVerified: 0,
+          todayRegistrations: 0
+        });
+
+        const users = ref([]);
+        const searchQuery = ref('');
+
+        // User Drawer & Modals state
+        const drawerOpen = ref(false);
+        const modalOpen = ref(false);
+        const selectedUser = ref(null);
+        
+        const adjForm = reactive({
+          type: 'add',
+          amount: ''
+        });
+        const adjLoading = ref(false);
+
+        // Authorization Headers
+        const getAuthHeaders = () => {
+          const token = localStorage.getItem('admin_token');
+          return {
+            'Content-Type': 'application/json',
+            'token': token,
+            'indiatoken': token,
+            'INDIATOKEN': token
+          };
+        };
+
+        const handleLogin = async () => {
+          if (loginForm.phone !== '7870873927' || loginForm.password !== 'Ritik@123') {
+            errorMsg.value = 'Invalid admin credentials.';
+            return;
+          }
+          errorMsg.value = '';
+          loading.value = true;
+          try {
+            // Log in via normal bypass login endpoint
+            const res = await fetch('/xxapi/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phone: loginForm.phone,
+                password: loginForm.password,
+                smscode: '1234'
+              })
+            });
+            const data = await res.json();
+            if (data && data.code === 0) {
+              const token = `token-${loginForm.phone}`;
+              localStorage.setItem('admin_token', token);
+              isLoggedIn.value = true;
+              activeTab.value = 'dashboard';
+              refreshData();
+            } else {
+              errorMsg.value = data.msg || 'Authentication failed. Please check user seeding.';
+            }
+          } catch (e) {
+            errorMsg.value = 'Network error during login.';
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const handleLogout = () => {
+          localStorage.removeItem('admin_token');
+          isLoggedIn.value = false;
+          loginForm.phone = '';
+          loginForm.password = '';
+        };
+
+        const refreshData = () => {
+          if (activeTab.value === 'dashboard') {
+            fetchStats();
+          } else {
+            fetchUsers();
+          }
+        };
+
+        const fetchStats = async () => {
+          fetching.value = true;
+          try {
+            const res = await fetch('/xxapi/admin/stats', {
+              headers: getAuthHeaders()
+            });
+            if (res.status === 403) {
+              handleLogout();
+              return;
+            }
+            const data = await res.json();
+            if (data.code === 0) {
+              Object.assign(stats, data.data);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            fetching.value = false;
+          }
+        };
+
+        const fetchUsers = async () => {
+          fetching.value = true;
+          try {
+            let url = '/xxapi/admin/users';
+            if (searchQuery.value) {
+              url += `?search=${encodeURIComponent(searchQuery.value)}`;
+            }
+            const res = await fetch(url, {
+              headers: getAuthHeaders()
+            });
+            if (res.status === 403) {
+              handleLogout();
+              return;
+            }
+            const data = await res.json();
+            if (data.code === 0) {
+              users.value = data.data;
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            fetching.value = false;
+          }
+        };
+
+        const showUserDrawer = (user) => {
+          selectedUser.value = user;
+          adjForm.type = 'add';
+          adjForm.amount = '';
+          drawerOpen.value = true;
+        };
+
+        const openQuickBalance = (user) => {
+          selectedUser.value = user;
+          adjForm.type = 'add';
+          adjForm.amount = '';
+          modalOpen.value = true;
+        };
+
+        const openBalanceShortCut = () => {
+          activeTab.value = 'users';
+          fetchUsers();
+        };
+
+        const updateBalance = async (user) => {
+          if (!adjForm.amount || isNaN(adjForm.amount) || adjForm.amount <= 0) {
+            alert('Please enter a valid positive adjustment amount.');
+            return;
+          }
+          adjLoading.value = true;
+          try {
+            const res = await fetch('/xxapi/admin/updateBalance', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                userId: user._id,
+                amount: adjForm.amount,
+                type: adjForm.type
+              })
+            });
+            const data = await res.json();
+            if (data.code === 0) {
+              alert(`Success: Balance updated to ₹${data.balance}`);
+              modalOpen.value = false;
+              drawerOpen.value = false;
+              refreshData();
+            } else {
+              alert(`Error: ${data.msg}`);
+            }
+          } catch (e) {
+            alert('Error contacting administrative server.');
+          } finally {
+            adjLoading.value = false;
+          }
+        };
+
+        const formatCurrency = (val) => {
+          if (val === undefined || val === null) return '0.00';
+          return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        const parseUserAgent = (ua) => {
+          if (!ua || ua === 'N/A') return 'Unknown Browser';
+          if (ua.includes('iPhone')) return 'iPhone (iOS)';
+          if (ua.includes('iPad')) return 'iPad (iOS)';
+          if (ua.includes('Android')) return 'Android Mobile';
+          if (ua.includes('Macintosh')) return 'Mac OS (Desktop)';
+          if (ua.includes('Windows')) return 'Windows (Desktop)';
+          if (ua.includes('Linux')) return 'Linux (Desktop)';
+          return 'Mobile / Tablet Device';
+        };
+
+        onMounted(() => {
+          const token = localStorage.getItem('admin_token');
+          if (token && token === 'token-7870873927') {
+            isLoggedIn.value = true;
+            refreshData();
+          }
+        });
+
+        return {
+          isLoggedIn,
+          activeTab,
+          loading,
+          fetching,
+          errorMsg,
+          loginForm,
+          stats,
+          users,
+          searchQuery,
+          drawerOpen,
+          modalOpen,
+          selectedUser,
+          adjForm,
+          adjLoading,
+          handleLogin,
+          handleLogout,
+          refreshData,
+          fetchUsers,
+          showUserDrawer,
+          openQuickBalance,
+          openBalanceShortCut,
+          updateBalance,
+          formatCurrency,
+          parseUserAgent
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

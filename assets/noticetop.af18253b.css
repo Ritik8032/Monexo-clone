@@ -1,0 +1,6 @@
+/* Noticetop CSS styles */
+.noticetop-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

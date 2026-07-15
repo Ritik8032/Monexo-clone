@@ -2,8 +2,8 @@
   "code": 0,
   "msg": "success",
   "data": {
-    "siteKey": "1x00000000000000000000AA",
-    "okTurnstileSitekey": "1x00000000000000000000AA",
+    "siteKey": "0",
+    "okTurnstileSitekey": "0",
     "appDownloadUrl": "https://down.monexo.top/down/monexo.apk",
     "appVersion": "1.0.0",
     "rsKeyMode": 1,
