@@ -18,6 +18,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(upload.any());
 
+// Gracefully handle multer errors (e.g. Multipart: Boundary not found)
+app.use((err, req, res, next) => {
+  if (err) {
+    console.error('[Multer / BodyParser Error Handler]', err.message);
+    if (err.message && err.message.includes('Boundary not found')) {
+      // Skip the error and let express parse the body via urlencoded/json
+      return next();
+    }
+    return res.json({ code: 400, msg: err.message });
+  }
+  next();
+});
+
 // MongoDB Connection
 const MONGO_URI = 'mongodb+srv://Ritik:Ritik906087@tdm.uwkxmdo.mongodb.net/TDM?retryWrites=true&w=majority';
 console.log('Connecting to MongoDB...');
@@ -274,18 +287,48 @@ app.post('/xxapi/checkSmsNew', async (req, res) => {
     return res.json({ code: 400, msg: 'Password cannot be empty' });
   }
 
-  // Check if user already exists in the database
-  const existingUser = await User.findOne({ phone });
-  if (existingUser) {
-    return res.json({ code: 400, msg: 'Phone number is already registered. Please login.' });
-  }
-
-  console.log(`[OTP Sent] Temporary OTP 1234 generated for registration of phone: ${phone}`);
+  // To allow Login button to show the OTP captcha dialog,
+  // checkSmsNew must return success code: 0 even if user already exists in DB.
+  console.log(`[checkSmsNew] Success. Temporary OTP 1234 generated for phone: ${phone}`);
   return res.json({
     code: 0,
     msg: 'success',
     data: {}
   });
+});
+
+app.post('/xxapi/resetpassword', async (req, res) => {
+  console.log('[resetpassword] Called', req.body);
+  try {
+    const { phone, password, sendtoken, smscode } = req.body;
+    if (!phone || String(phone).trim() === '') {
+      return res.json({ code: 400, msg: 'Phone number is required' });
+    }
+    if (isPasswordEmpty(password)) {
+      return res.json({ code: 400, msg: 'Password cannot be empty' });
+    }
+    if (!smscode || String(smscode).trim() !== '1234') {
+      return res.json({ code: 400, msg: 'Incorrect OTP. Please enter 1234.' });
+    }
+
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.json({ code: 400, msg: 'User does not exist. Please register first.' });
+    }
+
+    user.password = password;
+    user.repassword = password;
+    await user.save();
+    console.log(`[ResetPassword] User ${phone} reset password successfully.`);
+
+    return res.json({
+      code: 0,
+      msg: 'success'
+    });
+  } catch (err) {
+    console.error('Reset Password Error:', err);
+    return res.json({ code: 500, msg: 'Internal server error' });
+  }
 });
 
 app.post('/xxapi/getsendtken', async (req, res) => {
