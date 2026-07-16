@@ -1,6 +1,6 @@
 {
-  "name": "Monexo",
-  "description": "Monexo Web Application Clone.",
+  "name": "Monexo Clone",
+  "description": "A peer-to-peer (P2P) lending marketplace clone of Monexo with an admin panel and full transaction management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
